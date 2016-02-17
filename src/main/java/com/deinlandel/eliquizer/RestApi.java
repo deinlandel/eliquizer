@@ -5,6 +5,7 @@ import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.POST;
+import rx.Observable;
 
 import java.util.List;
 
@@ -14,5 +15,5 @@ import java.util.List;
 public interface RestApi {
     @FormUrlEncoded
     @POST("recipe/getFlavors/")
-    Call<List<RecipeFlavor>> getFlavors(@Field("id") String id);
+    Observable<List<RecipeFlavor>> getFlavors(@Field("id") String id);
 }
