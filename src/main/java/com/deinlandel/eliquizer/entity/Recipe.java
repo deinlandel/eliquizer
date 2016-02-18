@@ -54,11 +54,15 @@ public class Recipe {
 
     @Override
     public String toString() {
-        return "Recipe{" +
-                "id='" + id + '\'' +
-                ", name='" + name + '\'' +
-                ", rating=" + rating +
-                ", flavors=\n" + flavors +
-                "\n}";
+
+        StringBuilder b = new StringBuilder("RECIPE id='" + id + '\'' + ", name='" + name + '\'' + ", rating="
+                + rating + ", flavors=\n");
+
+        for (RecipeFlavor flavor : flavors) {
+            b.append("   - ").append(flavor.name).append(" ").append(flavor.perc).append("%").append("\n");
+        }
+        b.append("\n");
+
+        return b.toString();
     }
 }
