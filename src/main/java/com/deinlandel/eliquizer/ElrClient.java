@@ -11,8 +11,6 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import rx.Observable;
-import rx.functions.Func0;
-import rx.functions.FuncN;
 import rx.schedulers.Schedulers;
 import rx.util.async.Async;
 
@@ -25,7 +23,7 @@ import java.util.*;
 public class ElrClient {
     private static final String BASE_URL = "http://e-liquid-recipes.com";
 
-    private final Map<String, String> cookies = new HashMap<String, String>();
+    private final Map<String, String> cookies = new HashMap<>();
     private final RestApi restApi;
 
     public ElrClient() {
@@ -43,8 +41,9 @@ public class ElrClient {
         cookies.putAll(response.cookies());
     }
 
+    @SuppressWarnings("unchecked")
     public List<Recipe> whatCanIMakePage(int page) throws IOException, NotAuthorizedException {
-        final List<Recipe> result = new ArrayList<Recipe>();
+        final List<Recipe> result = new ArrayList<>();
 
         String url = BASE_URL + "/whatcanimake?exclsingle=1&sort=score&direction=desc&page=" + page;
         Connection.Response response = getResponseWithCookies(url);
@@ -59,7 +58,7 @@ public class ElrClient {
             return result;
         }
 
-        List<Observable<List<RecipeFlavor>>> requests = new ArrayList<Observable<List<RecipeFlavor>>>();
+        List<Observable<List<RecipeFlavor>>> requests = new ArrayList<>();
 
         ListIterator<Element> it = elements.listIterator(1);
         while (it.hasNext()) {
@@ -74,54 +73,44 @@ public class ElrClient {
         }
 
         //Request flavors for each recipe in list
-        Observable.zip(requests, new FuncN<Object>() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Object call(Object... args) {
-                for (int i = 0; i < args.length; i++) {
-                    result.get(i).setFlavors((List<RecipeFlavor>) args[i]);
-                }
-                return 1;
+        Observable.zip(requests, args -> {
+            for (int i = 0; i < args.length; i++) {
+                result.get(i).setFlavors((List<RecipeFlavor>) args[i]);
             }
+            return 1;
         }).observeOn(Schedulers.io()).toBlocking().first();
 
         return result;
     }
 
-    public List<Recipe> whatCanIMake(int pageLimit) throws IOException, NotAuthorizedException {
-        final List<Recipe> result = new ArrayList<Recipe>();
+    @SuppressWarnings("unchecked")
+    public List<Recipe> whatCanIMake(int pageLimit) {
+        final List<Recipe> result = new ArrayList<>();
 
-        List<Observable<List<Recipe>>> requests = new ArrayList<Observable<List<Recipe>>>();
+        List<Observable<List<Recipe>>> requests = new ArrayList<>();
         for (int i = 1; i <= pageLimit; i++) {
             final int finalI = i;
-            requests.add(Async.start(new Func0<List<Recipe>>() {
-                @Override
-                public List<Recipe> call() {
-                    //System.out.println("Fetching page " + finalI);
-                    try {
-                        return whatCanIMakePage(finalI);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+            requests.add(Async.start(() -> {
+                //System.out.println("Fetching page " + finalI);
+                try {
+                    return whatCanIMakePage(finalI);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             }));
         }
 
-        Observable.zip(requests, new FuncN<Object>() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Object call(Object... args) {
-                for (Object arg : args) {
-                    result.addAll((Collection<? extends Recipe>) arg);
-                }
-                return 1;
+        Observable.zip(requests, args -> {
+            for (Object arg : args) {
+                result.addAll((Collection<? extends Recipe>) arg);
             }
+            return 1;
         }).toBlocking().last();
 
         return result;
     }
 
-    public List<RecipeFlavor> getFlavorsForRecipe(String recipeId) throws IOException {
+    public List<RecipeFlavor> getFlavorsForRecipe(String recipeId) {
        return restApi.getFlavors(recipeId).toBlocking().first();
     }
 
