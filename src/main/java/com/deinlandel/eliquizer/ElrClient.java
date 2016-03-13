@@ -14,14 +14,21 @@ import rx.Observable;
 import rx.schedulers.Schedulers;
 import rx.util.async.Async;
 
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.*;
 
 /**
+ * Provides methods to retrieve various data from e-liquid-recipes.com.
+ * Note that it class is stateful - it stores cookies (in memory for now) between requests. You will need to authorize
+ * using {@link #login(String, String)} method before retrieving any account-related data, such as "What can I make", etc.
  * @author Deinlandel
  */
 public class ElrClient {
-    private static final String BASE_URL = "http://e-liquid-recipes.com";
+    public static final String BASE_URL = "http://e-liquid-recipes.com";
+    public static final String WHAT_CAN_I_MAKE_PATH = "whatcanimake?exclsingle=1&sort=score&direction=desc";
+    public static final int TIMEOUT_MILLIS = 30000;
 
     private final Map<String, String> cookies = new HashMap<>();
     private final RestApi restApi;
@@ -30,8 +37,15 @@ public class ElrClient {
         restApi = setupRestApi();
     }
 
-    public void login(String login, String password) throws IOException, WrongCredentialsException {
-        Connection c = Jsoup.connect(BASE_URL + "/login").timeout(30000)
+    /**
+     * Create user session at e-liquid-recipes and store it in cookies of ElrClient.
+     * @param login login (e-mail)
+     * @param password password
+     * @throws IOException whenever any html loading error or network error occurs
+     * @throws WrongCredentialsException if authorization failed because of wrong login/password
+     */
+    public void login(@Nonnull String login, @Nonnull String password) throws IOException, WrongCredentialsException {
+        Connection c = Jsoup.connect(BASE_URL + "/login").timeout(TIMEOUT_MILLIS)
                 .data("email", login)
                 .data("passwd", password);
         Connection.Response response = c.method(Connection.Method.POST).execute();
@@ -41,11 +55,19 @@ public class ElrClient {
         cookies.putAll(response.cookies());
     }
 
+    /**
+     * Fetch and parse single recipe list page.
+     * @param page page number, starting at 1
+     * @param path page path, for example, "whatcanimake?exclsingle=1&sort=score&direction=desc"
+     * @return parsed list of recipes with flavors
+     * @throws IOException whenever any html loading error or network error occurs
+     * @throws NotAuthorizedException if current ElrClient cookies do not contain valid e-liquid-recipes.com user session
+     */
     @SuppressWarnings("unchecked")
-    public List<Recipe> whatCanIMakePage(int page) throws IOException, NotAuthorizedException {
+    public List<Recipe> getRecipesPage(@Nonnegative int page, @Nonnull String path) throws IOException, NotAuthorizedException {
+        String url = BASE_URL + "/" + path + "&page=" + page;
         final List<Recipe> result = new ArrayList<>();
 
-        String url = BASE_URL + "/whatcanimake?exclsingle=1&sort=score&direction=desc&page=" + page;
         Connection.Response response = getResponseWithCookies(url);
         Document document = response.parse();
         Elements recipeList = document.getElementsByClass("recipelist");
@@ -83,8 +105,12 @@ public class ElrClient {
         return result;
     }
 
+    public List<Recipe> whatCanIMake(@Nonnegative int pageLimit) {
+        return getRecipes(pageLimit, WHAT_CAN_I_MAKE_PATH);
+    }
+
     @SuppressWarnings("unchecked")
-    public List<Recipe> whatCanIMake(int pageLimit) {
+    public List<Recipe> getRecipes(int pageLimit, String path) {
         final List<Recipe> result = new ArrayList<>();
 
         List<Observable<List<Recipe>>> requests = new ArrayList<>();
@@ -93,7 +119,7 @@ public class ElrClient {
             requests.add(Async.start(() -> {
                 //System.out.println("Fetching page " + finalI);
                 try {
-                    return whatCanIMakePage(finalI);
+                    return getRecipesPage(finalI, path);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -110,12 +136,13 @@ public class ElrClient {
         return result;
     }
 
-    public List<RecipeFlavor> getFlavorsForRecipe(String recipeId) {
+    @SuppressWarnings("UnusedDeclaration")
+    public List<RecipeFlavor> getFlavorsForRecipe(@Nonnull String recipeId) {
        return restApi.getFlavors(recipeId).toBlocking().first();
     }
 
-    private Connection.Response getResponseWithCookies(String url) throws IOException {
-        Connection c = Jsoup.connect(url).timeout(30000)
+    private Connection.Response getResponseWithCookies(@Nonnull String url) throws IOException {
+        Connection c = Jsoup.connect(url).timeout(TIMEOUT_MILLIS)
                 .cookies(cookies);
         Connection.Response response = c.method(Connection.Method.GET).execute();
         cookies.putAll(response.cookies());

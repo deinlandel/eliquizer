@@ -1,8 +1,5 @@
 package com.deinlandel.eliquizer.entity;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
-
 import java.util.List;
 
 /**
@@ -21,14 +18,17 @@ public class Recipe {
         this.rating = rating;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public String getId() {
         return id;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public String getName() {
         return name;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public double getRating() {
         return rating;
     }
@@ -44,12 +44,7 @@ public class Recipe {
     public boolean containsFlavor(String flavor) {
         if (flavors == null) return false;
         final String lowerCase = flavor.toLowerCase();
-        return  !Collections2.filter(flavors, new Predicate<RecipeFlavor>() {
-            @Override
-            public boolean apply(RecipeFlavor input) {
-                return input.name.toLowerCase().contains(lowerCase);
-            }
-        }).isEmpty();
+        return flavors.stream().anyMatch(input -> input.name.toLowerCase().contains(lowerCase));
     }
 
     @Override

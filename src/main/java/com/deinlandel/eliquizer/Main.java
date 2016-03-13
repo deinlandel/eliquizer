@@ -1,12 +1,10 @@
 package com.deinlandel.eliquizer;
 
 import com.deinlandel.eliquizer.entity.Recipe;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Deinlandel
@@ -15,17 +13,13 @@ public class Main {
     public static void main(String[] args) throws IOException, NotAuthorizedException, WrongCredentialsException {
 
         ElrClient c = new ElrClient();
-        c.login("login", "pass");
+        c.login("login", "password");
         List<Recipe> whatCanIMake = c.whatCanIMake(4);
-        System.out.println(whatCanIMake);
+        //System.out.println(whatCanIMake);
 
-        Collection<Recipe> filtered = Collections2.filter(whatCanIMake, new Predicate<Recipe>() {
-            @Override
-            public boolean apply(Recipe input) {
-
-                return input.containsFlavor("sour");
-            }
-        });
+        List<Recipe> filtered = whatCanIMake.stream().filter(input ->
+                !input.containsFlavor("strawberry") && input.getFlavors().size() > 2 && input.getFlavors().size() < 7)
+                .collect(Collectors.toList());
 
         System.out.println(">>>>>>>>>" + filtered);
     }
