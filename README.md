@@ -6,6 +6,11 @@ Unofficial parser and client for http://e-liquid-recipes.com/. Not ready for usa
 It was created for personal needs to provide more sophisticated search options to recipe listings
 (for example, filter recipes by number of flavors or by rating, find recipes containing or NOT containing specified flavors, etc.)
 
+# Usage
+
+Currently there is no GUI or command line interface.
+See com.deinlandel.eliquizer.Main class for example on how to use.
+
 # NOTICE
 Please do not use this tool to flood e-liquid-recipes.com with requests /  collect the data and pretend that it's your own database, etc.
 This is a community site run by enthusiasts, please respect their work.
