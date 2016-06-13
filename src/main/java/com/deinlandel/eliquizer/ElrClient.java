@@ -89,8 +89,11 @@ public class ElrClient {
             Elements nameElement = row.select("td:eq(0)");
             String id = nameElement.select(".rinfo").attr("data-rid");
             String name = nameElement.select(".mlink").text();
-            double rating = Double.parseDouble(row.select("td:eq(3)").select(".star").attr("data-score"));
-            result.add(new Recipe(id, name, rating));
+            Elements ratingCell = row.select("td:eq(3)");
+            double rating = Double.parseDouble(ratingCell.select(".star").attr("data-score"));
+            String voteString = ratingCell.select(".novo").text();
+            int votes = Integer.parseInt(voteString.substring(1, voteString.length() - 1));
+            result.add(new Recipe(id, name, rating, votes));
             requests.add(restApi.getFlavors(id));
         }
 

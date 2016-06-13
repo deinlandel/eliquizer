@@ -9,13 +9,15 @@ public class Recipe {
     private final String id;
     private final String name;
     private final double rating;
+    private final int votes;
 
     private List<RecipeFlavor> flavors;
 
-    public Recipe(String id, String name, double rating) {
+    public Recipe(String id, String name, double rating, int votes) {
         this.id = id;
         this.name = name;
         this.rating = rating;
+        this.votes = votes;
     }
 
     @SuppressWarnings("UnusedDeclaration")
@@ -47,11 +49,15 @@ public class Recipe {
         return flavors.stream().anyMatch(input -> input.name.toLowerCase().contains(lowerCase));
     }
 
+    public int getVotes() {
+        return votes;
+    }
+
     @Override
     public String toString() {
 
         StringBuilder b = new StringBuilder("RECIPE id='" + id + '\'' + ", name='" + name + '\'' + ", rating="
-                + rating + ", flavors=\n");
+                + rating + " (" + votes + " votes), flavors=\n");
 
         for (RecipeFlavor flavor : flavors) {
             b.append("   - ").append(flavor.name).append(" ").append(flavor.perc).append("%").append("\n");
