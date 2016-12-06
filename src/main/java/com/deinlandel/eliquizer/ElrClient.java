@@ -16,6 +16,10 @@ import rx.util.async.Async;
 
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.util.*;
 
@@ -26,9 +30,10 @@ import java.util.*;
  * @author Deinlandel
  */
 public class ElrClient {
+    public static final String LOGIN_BASE_URL = "https://e-liquid-recipes.com";
     public static final String BASE_URL = "http://e-liquid-recipes.com";
     public static final String WHAT_CAN_I_MAKE_PATH = "whatcanimake?exclsingle=1&sort=score&direction=desc";
-    public static final int TIMEOUT_MILLIS = 30000;
+    public static final int TIMEOUT_MILLIS = 90000;
 
     private final Map<String, String> cookies = new HashMap<>();
     private final RestApi restApi;
@@ -45,12 +50,22 @@ public class ElrClient {
      * @throws WrongCredentialsException if authorization failed because of wrong login/password
      */
     public void login(@Nonnull String login, @Nonnull String password) throws IOException, WrongCredentialsException {
-        Connection c = Jsoup.connect(BASE_URL + "/login").timeout(TIMEOUT_MILLIS)
-                .data("email", login)
-                .data("passwd", password);
-        Connection.Response response = c.method(Connection.Method.POST).execute();
+        disableCertificates();
+        Connection.Response loginPageResponse = getResponseWithCookies(LOGIN_BASE_URL + "/login");
+        Document document = loginPageResponse.parse();
+        cookies.putAll(loginPageResponse.cookies());
+        String token = document.select("input[name=_token]").attr("value");
 
-        if(response.parse().getElementById("passwd") != null) throw new WrongCredentialsException();
+        Connection c = Jsoup.connect(LOGIN_BASE_URL + "/login").timeout(TIMEOUT_MILLIS)
+                .cookies(cookies)
+                .data("email", login)
+                .data("_token", token)
+                .data("passwd", password);
+        Connection.Response response = c.method(Connection.Method.POST).ignoreHttpErrors(false).execute();
+
+        if(response.parse().getElementById("passwd") != null) {
+            throw new WrongCredentialsException();
+        }
 
         cookies.putAll(response.cookies());
     }
@@ -159,5 +174,35 @@ public class ElrClient {
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .build();
         return retrofit.create(RestApi.class);
+    }
+
+    private static void disableCertificates() {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+
+                    @Override
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    @Override
+                    public void checkClientTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+
+                    @Override
+                    public void checkServerTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+                }
+        };
+
+        // Install the all-trusting trust manager
+        try {
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        } catch (Exception e) {
+        }
     }
 }
